@@ -12,11 +12,11 @@ Create a Claude Code skill that reads the current bug context and guides impleme
 
 ## Acceptance Criteria
 
-- [ ] Skill file created at `.claude/commands/docket:implement.md`
-- [ ] Skill reads `.docket/current.json` to understand the bug
-- [ ] Skill guides Claude to follow the goal and acceptance criteria
-- [ ] Skill instructs Claude to update the bug's Log section with progress
-- [ ] Skill instructs Claude to check off acceptance criteria as completed
+- [x] Skill file created at `.claude/commands/docket:implement.md`
+- [x] Skill reads `.docket/current.json` to understand the bug
+- [x] Skill guides Claude to follow the goal and acceptance criteria
+- [x] Skill instructs Claude to update the bug's Log section with progress
+- [x] Skill instructs Claude to check off acceptance criteria as completed
 
 ## Context
 
@@ -31,3 +31,5 @@ The skill should pick up from there and guide the agent through implementation.
 The skill should be namespaced as `docket:implement` so repos can have their own implement skills.
 
 ## Log
+
+- 2026-01-13: Created skill file at .claude/commands/docket:implement.md
