@@ -128,3 +128,175 @@ impl Bug {
         &self.metadata.changes
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn status_from_str_draft() {
+        assert!(matches!(Status::from_str("draft").unwrap(), Status::Draft));
+        assert!(matches!(Status::from_str("Draft").unwrap(), Status::Draft));
+        assert!(matches!(Status::from_str("DRAFT").unwrap(), Status::Draft));
+    }
+
+    #[test]
+    fn status_from_str_approved() {
+        assert!(matches!(
+            Status::from_str("approved").unwrap(),
+            Status::Approved
+        ));
+    }
+
+    #[test]
+    fn status_from_str_in_progress_variants() {
+        assert!(matches!(
+            Status::from_str("in-progress").unwrap(),
+            Status::InProgress
+        ));
+        assert!(matches!(
+            Status::from_str("in_progress").unwrap(),
+            Status::InProgress
+        ));
+        assert!(matches!(
+            Status::from_str("inprogress").unwrap(),
+            Status::InProgress
+        ));
+        assert!(matches!(
+            Status::from_str("IN-PROGRESS").unwrap(),
+            Status::InProgress
+        ));
+    }
+
+    #[test]
+    fn status_from_str_done() {
+        assert!(matches!(Status::from_str("done").unwrap(), Status::Done));
+    }
+
+    #[test]
+    fn status_from_str_unknown_fails() {
+        assert!(Status::from_str("invalid").is_err());
+        assert!(Status::from_str("").is_err());
+    }
+
+    #[test]
+    fn status_display() {
+        assert_eq!(Status::Draft.to_string(), "draft");
+        assert_eq!(Status::Approved.to_string(), "approved");
+        assert_eq!(Status::InProgress.to_string(), "in-progress");
+        assert_eq!(Status::Done.to_string(), "done");
+    }
+
+    #[test]
+    fn priority_from_str_low() {
+        assert_eq!(Priority::from_str("low").unwrap(), Priority::Low);
+        assert_eq!(Priority::from_str("LOW").unwrap(), Priority::Low);
+    }
+
+    #[test]
+    fn priority_from_str_medium() {
+        assert_eq!(Priority::from_str("medium").unwrap(), Priority::Medium);
+        assert_eq!(Priority::from_str("med").unwrap(), Priority::Medium);
+    }
+
+    #[test]
+    fn priority_from_str_high() {
+        assert_eq!(Priority::from_str("high").unwrap(), Priority::High);
+    }
+
+    #[test]
+    fn priority_from_str_unknown_fails() {
+        assert!(Priority::from_str("critical").is_err());
+        assert!(Priority::from_str("").is_err());
+    }
+
+    #[test]
+    fn priority_display() {
+        assert_eq!(Priority::Low.to_string(), "low");
+        assert_eq!(Priority::Medium.to_string(), "medium");
+        assert_eq!(Priority::High.to_string(), "high");
+    }
+
+    #[test]
+    fn priority_default_is_medium() {
+        assert_eq!(Priority::default(), Priority::Medium);
+    }
+
+    #[test]
+    fn bug_parse_valid_markdown() {
+        let content = r#"---
+id: test1
+title: Test Bug
+status: draft
+priority: high
+created: 2024-01-01T00:00:00Z
+---
+This is the bug body.
+
+## Goal
+Fix the thing."#;
+
+        let bug = Bug::parse(content).unwrap();
+
+        assert_eq!(bug.metadata.id, "test1");
+        assert_eq!(bug.metadata.title, "Test Bug");
+        assert!(matches!(bug.metadata.status, Status::Draft));
+        assert_eq!(bug.metadata.priority, Priority::High);
+        assert!(bug.body.contains("This is the bug body"));
+        assert!(bug.body.contains("## Goal"));
+    }
+
+    #[test]
+    fn bug_parse_with_changes() {
+        let content = r#"---
+id: test2
+title: Bug with Changes
+status: in-progress
+priority: medium
+created: 2024-01-01T00:00:00Z
+changes:
+  - change1
+  - change2
+---
+Body content."#;
+
+        let bug = Bug::parse(content).unwrap();
+
+        assert_eq!(bug.metadata.changes, vec!["change1", "change2"]);
+    }
+
+    #[test]
+    fn bug_parse_invalid_no_frontmatter() {
+        let content = "Just some text without frontmatter";
+        assert!(Bug::parse(content).is_err());
+    }
+
+    #[test]
+    fn bug_parse_invalid_incomplete_frontmatter() {
+        let content = "---\nid: test\n---";
+        // Missing required fields should fail
+        assert!(Bug::parse(content).is_err());
+    }
+
+    #[test]
+    fn bug_accessor_methods() {
+        let content = r#"---
+id: abc1
+title: Accessor Test
+status: approved
+priority: low
+created: 2024-01-01T00:00:00Z
+changes:
+  - ch1
+---
+Body"#;
+
+        let bug = Bug::parse(content).unwrap();
+
+        assert_eq!(bug.id(), "abc1");
+        assert_eq!(bug.title(), "Accessor Test");
+        assert!(matches!(bug.status(), Status::Approved));
+        assert_eq!(bug.priority(), &Priority::Low);
+        assert_eq!(bug.changes(), &["ch1"]);
+    }
+}

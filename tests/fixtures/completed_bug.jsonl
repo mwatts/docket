@@ -1,0 +1,5 @@
+{"id":"e001","bug_id":"done","timestamp":"2024-01-01T00:00:00Z","type":"created","data":{"title":"Completed bug example","priority":"high","body":"A bug that went through all status changes."}}
+{"id":"e002","bug_id":"done","timestamp":"2024-01-01T01:00:00Z","type":"status_changed","data":{"from":"draft","to":"approved"}}
+{"id":"e003","bug_id":"done","timestamp":"2024-01-01T02:00:00Z","type":"status_changed","data":{"from":"approved","to":"in-progress"}}
+{"id":"e004","bug_id":"done","timestamp":"2024-01-01T03:00:00Z","type":"change_linked","data":{"change_id":"abc123xyz"}}
+{"id":"e005","bug_id":"done","timestamp":"2024-01-01T04:00:00Z","type":"status_changed","data":{"from":"in-progress","to":"done"}}
