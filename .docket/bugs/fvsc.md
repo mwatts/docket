@@ -1,7 +1,7 @@
 ---
 id: fvsc
 title: Create docket:implement Claude Code skill
-status: approved
+status: done
 priority: high
 created: 2026-01-13T02:53:21.622112628Z
 ---
