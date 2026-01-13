@@ -245,10 +245,11 @@ fn read_workspace_context(path: &Path, bug_id: &str) -> Result<Option<WorkspaceC
     Ok(None)
 }
 
-/// Run jj snapshot to capture any uncommitted changes
+/// Trigger jj to snapshot any uncommitted changes
+/// jj auto-snapshots on most commands, so we run `jj log -n0` (no output, just snapshot)
 fn jj_snapshot() -> Result<()> {
     let output = std::process::Command::new("jj")
-        .args(["snapshot"])
+        .args(["log", "-n0"])
         .output();
 
     match output {
@@ -258,14 +259,9 @@ fn jj_snapshot() -> Result<()> {
         }
         Ok(output) => {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            // Don't fail if snapshot says there's nothing to do
-            if stderr.contains("Nothing changed") || output.status.success() {
-                Ok(())
-            } else {
-                Err(anyhow!("jj snapshot failed: {}", stderr.trim()))
-            }
+            Err(anyhow!("jj log failed: {}", stderr.trim()))
         }
-        Err(e) => Err(anyhow!("failed to run jj snapshot: {}", e)),
+        Err(e) => Err(anyhow!("failed to run jj log: {}", e)),
     }
 }
 
