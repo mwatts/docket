@@ -155,7 +155,9 @@ pub fn work(id: &str, skip_permissions: bool, auto: bool) -> Result<()> {
     println!();
 
     // Exec claude with environment variable and optional flags
+    // Explicitly set current_dir to ensure claude runs in workspace
     let err = Command::new("claude")
+        .current_dir(&workspace_path)
         .args(&claude_args)
         .env("DOCKET_BUG", &bug_id)
         .exec();
