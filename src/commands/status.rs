@@ -109,19 +109,7 @@ pub fn done(id: &str) -> Result<()> {
         }
     }
 
-    // Return to original directory if we switched
-    if switched_to_workspace {
-        if let Some(ref orig) = original_dir {
-            std::env::set_current_dir(orig)?;
-            println!(
-                "{} Returned to {}",
-                "→".blue(),
-                orig.display()
-            );
-        }
-    }
-
-    // Emit StatusChanged event
+    // Emit StatusChanged event (while still in workspace if we switched)
     let status_event = Event::status_changed(bug_id.clone(), old_status.clone(), Status::Done);
     store.append_event(&status_event)?;
 
@@ -133,6 +121,18 @@ pub fn done(id: &str) -> Result<()> {
         format!("{}", old_status).dimmed(),
         format!("{}", Status::Done).green()
     );
+
+    // Return to original directory if we switched
+    if switched_to_workspace {
+        if let Some(ref orig) = original_dir {
+            std::env::set_current_dir(orig)?;
+            println!(
+                "{} Returned to {}",
+                "→".blue(),
+                orig.display()
+            );
+        }
+    }
 
     // Only create a fresh jj change if NOT in a workspace
     // (workspace changes stay as-is for review/submission)
