@@ -58,13 +58,51 @@ pub fn done(id: &str) -> Result<()> {
         ));
     }
 
-    // Try to sync body from current.json if it exists
-    if let Some(updated_body) = find_and_read_current_json(bug.id())? {
-        bug.body = updated_body;
+    // Check if we're running from a workspace
+    let workspace_ctx = detect_workspace(bug.id())?;
+    let in_workspace = workspace_ctx.is_some();
+
+    if let Some(ref ctx) = workspace_ctx {
+        // Running from workspace - do the full workflow
+        println!(
+            "{} Running from workspace for bug {}",
+            "→".blue(),
+            bug.id().cyan()
+        );
+
+        // 1. Snapshot any uncommitted changes
+        jj_snapshot()?;
+
+        // 2. Generate and set commit message
+        let commit_message = format!("Implement {} ({})", ctx.title, ctx.bug_id);
+        jj_describe(&commit_message)?;
+
+        // 3. Link the change to the bug
+        if let Some(change_id) = get_current_change_id()? {
+            bug.add_change(change_id.clone());
+            println!(
+                "{} Linked change {} to bug {}",
+                "✓".green(),
+                change_id.cyan(),
+                bug.id().cyan()
+            );
+        }
+
+        // 4. Sync updated body from workspace
+        bug.body = ctx.body.clone();
         println!(
             "{} Synced acceptance criteria from workspace",
             "→".blue()
         );
+    } else {
+        // Not in workspace - try to sync body from current.json if it exists
+        if let Some(updated_body) = find_and_read_current_json(bug.id())? {
+            bug.body = updated_body;
+            println!(
+                "{} Synced acceptance criteria from workspace",
+                "→".blue()
+            );
+        }
     }
 
     bug.set_status(Status::Done);
@@ -79,8 +117,11 @@ pub fn done(id: &str) -> Result<()> {
         format!("{}", Status::Done).green()
     );
 
-    // Create a fresh jj change if the current one has content
-    create_fresh_change_if_needed()?;
+    // Only create a fresh jj change if NOT in a workspace
+    // (workspace changes stay as-is for review/submission)
+    if !in_workspace {
+        create_fresh_change_if_needed()?;
+    }
 
     Ok(())
 }
@@ -140,6 +181,130 @@ fn create_fresh_change_if_needed() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Workspace context returned when running from a ws-* directory
+struct WorkspaceContext {
+    bug_id: String,
+    title: String,
+    body: String,
+}
+
+/// Check if we're running from a workspace directory
+/// Returns workspace context if found, None otherwise
+fn detect_workspace(bug_id: &str) -> Result<Option<WorkspaceContext>> {
+    // First, check if we're in a workspace with current.json
+    let local_current = Path::new(".docket/current.json");
+    if local_current.exists() {
+        if let Some(ctx) = read_workspace_context(local_current, bug_id)? {
+            return Ok(Some(ctx));
+        }
+    }
+
+    // Also check current directory name for ws-* pattern
+    if let Ok(cwd) = std::env::current_dir() {
+        if let Some(dir_name) = cwd.file_name().and_then(|n| n.to_str()) {
+            if dir_name.starts_with("ws-") {
+                // We're in a workspace directory, check for current.json
+                let current_json = cwd.join(".docket/current.json");
+                if current_json.exists() {
+                    if let Some(ctx) = read_workspace_context(&current_json, bug_id)? {
+                        return Ok(Some(ctx));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+/// Read workspace context from current.json if it matches the bug_id
+fn read_workspace_context(path: &Path, bug_id: &str) -> Result<Option<WorkspaceContext>> {
+    let content = std::fs::read_to_string(path)?;
+    let json: serde_json::Value = serde_json::from_str(&content)?;
+
+    // Check if this current.json is for the right bug
+    if json.get("bug_id").and_then(|v| v.as_str()) == Some(bug_id) {
+        let title = json.get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let body = json.get("body")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        return Ok(Some(WorkspaceContext {
+            bug_id: bug_id.to_string(),
+            title,
+            body,
+        }));
+    }
+
+    Ok(None)
+}
+
+/// Run jj snapshot to capture any uncommitted changes
+fn jj_snapshot() -> Result<()> {
+    let output = std::process::Command::new("jj")
+        .args(["snapshot"])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            println!("{} Snapshotted working copy changes", "→".blue());
+            Ok(())
+        }
+        Ok(output) => {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            // Don't fail if snapshot says there's nothing to do
+            if stderr.contains("Nothing changed") || output.status.success() {
+                Ok(())
+            } else {
+                Err(anyhow!("jj snapshot failed: {}", stderr.trim()))
+            }
+        }
+        Err(e) => Err(anyhow!("failed to run jj snapshot: {}", e)),
+    }
+}
+
+/// Set the commit description using jj describe
+fn jj_describe(message: &str) -> Result<()> {
+    let output = std::process::Command::new("jj")
+        .args(["describe", "-m", message])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            println!("{} Set commit message", "→".blue());
+            Ok(())
+        }
+        Ok(output) => {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(anyhow!("jj describe failed: {}", stderr.trim()))
+        }
+        Err(e) => Err(anyhow!("failed to run jj describe: {}", e)),
+    }
+}
+
+/// Get the current change ID
+fn get_current_change_id() -> Result<Option<String>> {
+    let output = std::process::Command::new("jj")
+        .args(["log", "-r", "@", "--no-graph", "-T", "change_id"])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            let change_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if change_id.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(change_id))
+            }
+        }
+        _ => Ok(None),
+    }
 }
 
 /// Look for current.json in likely locations and return the body if found
