@@ -16,7 +16,7 @@ use crate::store::Store;
 /// - `--dangerously-skip-permissions`: Skips all permission prompts in Claude,
 ///   allowing autonomous file operations. Use with caution.
 ///
-/// - `--prompt "/docket:implement"`: Automatically runs the docket:implement
+/// - `"/docket:implement"` (positional prompt): Automatically runs the docket:implement
 ///   skill on startup, so you don't have to type it manually.
 ///
 /// These can be enabled via:
@@ -143,7 +143,7 @@ pub fn work(id: &str, skip_permissions: bool, auto: bool) -> Result<()> {
     }
 
     if use_auto {
-        claude_args.push("--prompt");
+        // Prompt is a positional argument, not a flag
         claude_args.push("/docket:implement");
         println!(
             "{} Auto-running /docket:implement skill",
