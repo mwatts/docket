@@ -1,0 +1,3 @@
+[work]
+skip_permissions = true
+auto_implement = true
