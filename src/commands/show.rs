@@ -1,0 +1,37 @@
+use anyhow::Result;
+use colored::Colorize;
+
+use crate::bug::Status;
+use crate::store::Store;
+
+pub fn show(id: &str) -> Result<()> {
+    let store = Store::open()?;
+    let bug = store.get_bug(id)?;
+
+    // Print header
+    println!("{} {}", bug.id().cyan().bold(), bug.title().bold());
+    println!("{}", "-".repeat(60).dimmed());
+
+    // Print metadata
+    let status_str = format!("{}", bug.status());
+    let status_colored = match bug.status() {
+        Status::Draft => status_str.dimmed(),
+        Status::Approved => status_str.green(),
+        Status::InProgress => status_str.yellow(),
+        Status::Done => status_str.blue(),
+    };
+
+    println!("{:12} {}", "Status:".dimmed(), status_colored);
+    println!("{:12} {}", "Priority:".dimmed(), bug.priority());
+    println!(
+        "{:12} {}",
+        "Created:".dimmed(),
+        bug.metadata.created.format("%Y-%m-%d %H:%M")
+    );
+    println!();
+
+    // Print body
+    println!("{}", bug.body);
+
+    Ok(())
+}
