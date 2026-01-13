@@ -51,6 +51,7 @@ pub fn done(id: &str) -> Result<()> {
 
     let old_status = bug.status().clone();
     let bug_id = bug.id().to_string();
+    let bug_title = bug.title().to_string();
 
     if matches!(old_status, Status::Done) {
         return Err(anyhow!(
@@ -64,10 +65,10 @@ pub fn done(id: &str) -> Result<()> {
     let mut switched_to_workspace = false;
 
     // Check if we're running from a workspace
-    let mut workspace_ctx = detect_workspace(&bug_id)?;
+    let mut in_workspace = is_in_workspace(&bug_id);
 
     // If not in workspace, check if one exists and switch to it
-    if workspace_ctx.is_none() {
+    if !in_workspace {
         if let Some(workspace_dir) = find_workspace_dir(&bug_id) {
             println!(
                 "{} Found workspace at {}, switching...",
@@ -76,14 +77,11 @@ pub fn done(id: &str) -> Result<()> {
             );
             std::env::set_current_dir(&workspace_dir)?;
             switched_to_workspace = true;
-            // Re-detect workspace context after directory change
-            workspace_ctx = detect_workspace(&bug_id)?;
+            in_workspace = true;
         }
     }
 
-    let in_workspace = workspace_ctx.is_some();
-
-    if let Some(ref ctx) = workspace_ctx {
+    if in_workspace {
         // Running from workspace - do the full workflow
         println!(
             "{} Running from workspace for bug {}",
@@ -95,7 +93,7 @@ pub fn done(id: &str) -> Result<()> {
         jj_snapshot()?;
 
         // 2. Generate and set commit message
-        let commit_message = format!("Implement {} ({})", ctx.title, ctx.bug_id);
+        let commit_message = format!("Implement {} ({})", bug_title, bug_id);
         jj_describe(&commit_message)?;
 
         // 3. Link the change to the bug
@@ -107,24 +105,6 @@ pub fn done(id: &str) -> Result<()> {
                 "✓".green(),
                 change_id.cyan(),
                 bug_id.cyan()
-            );
-        }
-
-        // 4. Sync updated body from workspace
-        let update_event = Event::updated(bug_id.clone(), None, Some(ctx.body.clone()));
-        store.append_event(&update_event)?;
-        println!(
-            "{} Synced acceptance criteria from workspace",
-            "→".blue()
-        );
-    } else {
-        // Not in workspace - try to sync body from current.json if it exists
-        if let Some(updated_body) = find_and_read_current_json(&bug_id)? {
-            let update_event = Event::updated(bug_id.clone(), None, Some(updated_body));
-            store.append_event(&update_event)?;
-            println!(
-                "{} Synced acceptance criteria from workspace",
-                "→".blue()
             );
         }
     }
@@ -177,7 +157,7 @@ fn find_workspace_dir(bug_id: &str) -> Option<std::path::PathBuf> {
                 .map(|p| p.join(format!("ws-{}", bug_id)));
 
             if let Some(ref path) = workspace_dir {
-                if path.exists() && path.join(".docket/current.json").exists() {
+                if path.exists() {
                     return workspace_dir;
                 }
             }
@@ -244,66 +224,15 @@ fn create_fresh_change_if_needed() -> Result<()> {
     Ok(())
 }
 
-/// Workspace context returned when running from a ws-* directory
-struct WorkspaceContext {
-    bug_id: String,
-    title: String,
-    body: String,
-}
-
-/// Check if we're running from a workspace directory
-/// Returns workspace context if found, None otherwise
-fn detect_workspace(bug_id: &str) -> Result<Option<WorkspaceContext>> {
-    // First, check if we're in a workspace with current.json
-    let local_current = Path::new(".docket/current.json");
-    if local_current.exists() {
-        if let Some(ctx) = read_workspace_context(local_current, bug_id)? {
-            return Ok(Some(ctx));
-        }
-    }
-
-    // Also check current directory name for ws-* pattern
+/// Check if we're running from a workspace directory for the given bug
+/// Returns true if in workspace ws-{bug_id}, false otherwise
+fn is_in_workspace(bug_id: &str) -> bool {
     if let Ok(cwd) = std::env::current_dir() {
         if let Some(dir_name) = cwd.file_name().and_then(|n| n.to_str()) {
-            if dir_name.starts_with("ws-") {
-                // We're in a workspace directory, check for current.json
-                let current_json = cwd.join(".docket/current.json");
-                if current_json.exists() {
-                    if let Some(ctx) = read_workspace_context(&current_json, bug_id)? {
-                        return Ok(Some(ctx));
-                    }
-                }
-            }
+            return dir_name == format!("ws-{}", bug_id);
         }
     }
-
-    Ok(None)
-}
-
-/// Read workspace context from current.json if it matches the bug_id
-fn read_workspace_context(path: &Path, bug_id: &str) -> Result<Option<WorkspaceContext>> {
-    let content = std::fs::read_to_string(path)?;
-    let json: serde_json::Value = serde_json::from_str(&content)?;
-
-    // Check if this current.json is for the right bug
-    if json.get("bug_id").and_then(|v| v.as_str()) == Some(bug_id) {
-        let title = json.get("title")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-        let body = json.get("body")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        return Ok(Some(WorkspaceContext {
-            bug_id: bug_id.to_string(),
-            title,
-            body,
-        }));
-    }
-
-    Ok(None)
+    false
 }
 
 /// Trigger jj to snapshot any uncommitted changes
@@ -364,50 +293,3 @@ fn get_current_change_id() -> Result<Option<String>> {
     }
 }
 
-/// Look for current.json in likely locations and return the body if found
-fn find_and_read_current_json(bug_id: &str) -> Result<Option<String>> {
-    // First, check if we're in a workspace with current.json
-    let local_current = Path::new(".docket/current.json");
-    if local_current.exists() {
-        if let Some(body) = read_current_json_if_matches(local_current, bug_id)? {
-            return Ok(Some(body));
-        }
-    }
-
-    // Try to find workspace relative to repo root
-    if let Ok(output) = std::process::Command::new("jj")
-        .args(["workspace", "root"])
-        .output()
-    {
-        if output.status.success() {
-            let repo_root = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            let workspace_current = Path::new(&repo_root)
-                .parent()
-                .map(|p| p.join(format!("ws-{}", bug_id)).join(".docket/current.json"));
-
-            if let Some(path) = workspace_current {
-                if path.exists() {
-                    if let Some(body) = read_current_json_if_matches(&path, bug_id)? {
-                        return Ok(Some(body));
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(None)
-}
-
-fn read_current_json_if_matches(path: &Path, bug_id: &str) -> Result<Option<String>> {
-    let content = std::fs::read_to_string(path)?;
-    let json: serde_json::Value = serde_json::from_str(&content)?;
-
-    // Check if this current.json is for the right bug
-    if json.get("bug_id").and_then(|v| v.as_str()) == Some(bug_id) {
-        if let Some(body) = json.get("body").and_then(|v| v.as_str()) {
-            return Ok(Some(body.to_string()));
-        }
-    }
-
-    Ok(None)
-}

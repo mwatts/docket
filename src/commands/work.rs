@@ -101,24 +101,6 @@ pub fn work(id: &str, skip_permissions: bool, auto: bool) -> Result<()> {
     std::env::set_current_dir(&workspace_path)
         .context("failed to change to workspace directory")?;
 
-    // Write context file for Claude to read
-    let context = serde_json::json!({
-        "bug_id": bug.id(),
-        "title": bug.title(),
-        "status": format!("{}", bug.status()),
-        "priority": format!("{}", bug.priority()),
-        "body": bug.body,
-    });
-
-    let docket_dir = std::path::Path::new(".docket");
-    if !docket_dir.exists() {
-        std::fs::create_dir_all(docket_dir)?;
-    }
-
-    let context_path = docket_dir.join("current.json");
-    std::fs::write(&context_path, serde_json::to_string_pretty(&context)?)
-        .context("failed to write context file")?;
-
     // Merge CLI flags with config (CLI takes precedence)
     let use_skip_permissions = skip_permissions || config.work.skip_permissions;
     let use_auto = auto || config.work.auto_implement;
