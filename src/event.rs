@@ -24,6 +24,10 @@ pub enum EventData {
         title: Option<String>,
         body: Option<String>,
     },
+    PriorityChanged {
+        from: Priority,
+        to: Priority,
+    },
     ChangeLinked {
         change_id: String,
     },
@@ -72,6 +76,10 @@ impl Event {
 
     pub fn change_linked(bug_id: String, change_id: String) -> Self {
         Self::new(bug_id, EventData::ChangeLinked { change_id })
+    }
+
+    pub fn priority_changed(bug_id: String, from: Priority, to: Priority) -> Self {
+        Self::new(bug_id, EventData::PriorityChanged { from, to })
     }
 }
 
@@ -163,6 +171,9 @@ pub fn derive_bug(events: &[Event]) -> Result<Bug> {
                 if let Some(b) = body {
                     bug.body = b.clone();
                 }
+            }
+            EventData::PriorityChanged { to, .. } => {
+                bug.metadata.priority = to.clone();
             }
             EventData::ChangeLinked { change_id } => {
                 if !bug.metadata.changes.contains(change_id) {

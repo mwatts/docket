@@ -26,6 +26,10 @@ enum Commands {
         /// Priority level
         #[arg(short, long, default_value = "medium")]
         priority: String,
+
+        /// Read body from file (use - for stdin)
+        #[arg(short, long)]
+        body: Option<String>,
     },
 
     /// List all bugs
@@ -47,6 +51,24 @@ enum Commands {
     Show {
         /// Bug ID (prefix match supported)
         id: String,
+    },
+
+    /// Update a bug's title, body, or priority
+    Update {
+        /// Bug ID (prefix match supported)
+        id: String,
+
+        /// New title for the bug
+        #[arg(short, long)]
+        title: Option<String>,
+
+        /// Read body from file (use - for stdin)
+        #[arg(short, long)]
+        body: Option<String>,
+
+        /// New priority level (low, medium, high)
+        #[arg(short, long)]
+        priority: Option<String>,
     },
 
     /// Mark a bug as approved for work
@@ -114,9 +136,13 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Init => commands::init(),
-        Commands::New { title, priority } => {
+        Commands::New {
+            title,
+            priority,
+            body,
+        } => {
             let interactive = title.is_none();
-            commands::new(title, &priority, interactive)
+            commands::new(title, &priority, body.as_deref(), interactive)
         }
         Commands::List {
             status,
@@ -124,6 +150,12 @@ fn main() -> Result<()> {
             all,
         } => commands::list(status.as_deref(), priority.as_deref(), all),
         Commands::Show { id } => commands::show(&id),
+        Commands::Update {
+            id,
+            title,
+            body,
+            priority,
+        } => commands::update(&id, title, body.as_deref(), priority.as_deref()),
         Commands::Approve { id } => commands::approve(&id),
         Commands::Start { id } => commands::start(&id),
         Commands::Done { id } => commands::done(&id),

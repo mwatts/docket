@@ -8,6 +8,7 @@ pub mod new;
 pub mod show;
 pub mod status;
 pub mod sweep;
+pub mod update;
 pub mod work;
 
 pub use cleanup::cleanup;
@@ -20,4 +21,5 @@ pub use new::new;
 pub use show::show;
 pub use status::{approve, done, start};
 pub use sweep::sweep;
+pub use update::update;
 pub use work::work;

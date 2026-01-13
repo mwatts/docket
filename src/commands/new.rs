@@ -1,12 +1,32 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use colored::Colorize;
 use dialoguer::{Input, Select};
+use std::fs;
+use std::io::{self, Read};
 
 use crate::bug::Priority;
 use crate::event::Event;
 use crate::store::Store;
 
-pub fn new(title: Option<String>, priority_str: &str, interactive: bool) -> Result<()> {
+/// Read body content from a file path or stdin (if path is "-")
+fn read_body_from_source(source: &str) -> Result<String> {
+    if source == "-" {
+        let mut content = String::new();
+        io::stdin()
+            .read_to_string(&mut content)
+            .context("failed to read body from stdin")?;
+        Ok(content)
+    } else {
+        fs::read_to_string(source).with_context(|| format!("failed to read body from '{}'", source))
+    }
+}
+
+pub fn new(
+    title: Option<String>,
+    priority_str: &str,
+    body_source: Option<&str>,
+    interactive: bool,
+) -> Result<()> {
     let store = Store::open()?;
 
     // Get title interactively if not provided
@@ -40,8 +60,10 @@ pub fn new(title: Option<String>, priority_str: &str, interactive: bool) -> Resu
     // Generate unique ID
     let id = store.generate_id()?;
 
-    // Create initial body template
-    let body = r#"## Goal
+    // Get body from source or use default template
+    let body = match body_source {
+        Some(source) => read_body_from_source(source)?,
+        None => r#"## Goal
 
 <!-- One-sentence description of success -->
 
@@ -56,7 +78,8 @@ pub fn new(title: Option<String>, priority_str: &str, interactive: bool) -> Resu
 ## Log
 
 <!-- Notes added during implementation -->"#
-        .to_string();
+            .to_string(),
+    };
 
     // Emit Created event
     let event = Event::created(id.clone(), title.clone(), priority, body);

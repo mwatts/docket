@@ -60,6 +60,19 @@ pub fn log(id: &str) -> Result<()> {
                     println!("    Body updated");
                 }
             }
+            EventData::PriorityChanged { from, to } => {
+                println!(
+                    "{} {} [{}]",
+                    timestamp.to_string().dimmed(),
+                    "priority_changed".yellow(),
+                    actor.dimmed()
+                );
+                println!(
+                    "    {} -> {}",
+                    format!("{}", from).dimmed(),
+                    format!("{}", to).green()
+                );
+            }
             EventData::ChangeLinked { change_id } => {
                 println!(
                     "{} {} [{}]",
