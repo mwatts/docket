@@ -77,6 +77,8 @@ pub struct BugMetadata {
     pub status: Status,
     pub priority: Priority,
     pub created: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub changes: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -93,6 +95,7 @@ impl Bug {
             status: Status::Draft,
             priority,
             created: Utc::now(),
+            changes: Vec::new(),
         };
 
         let body = r#"
@@ -158,5 +161,15 @@ impl Bug {
 
     pub fn set_status(&mut self, status: Status) {
         self.metadata.status = status;
+    }
+
+    pub fn changes(&self) -> &[String] {
+        &self.metadata.changes
+    }
+
+    pub fn add_change(&mut self, change_id: String) {
+        if !self.metadata.changes.contains(&change_id) {
+            self.metadata.changes.push(change_id);
+        }
     }
 }

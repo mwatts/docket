@@ -72,6 +72,18 @@ enum Commands {
         /// Bug ID (prefix match supported)
         id: String,
     },
+
+    /// Link a jj change to a bug
+    Link {
+        /// Bug ID (prefix match supported)
+        bug_id: String,
+
+        /// jj change ID to link
+        change_id: String,
+    },
+
+    /// Auto-close bugs whose linked changes have been merged to trunk
+    Sweep,
 }
 
 fn main() -> Result<()> {
@@ -93,5 +105,7 @@ fn main() -> Result<()> {
         Commands::Start { id } => commands::start(&id),
         Commands::Done { id } => commands::done(&id),
         Commands::Work { id } => commands::work(&id),
+        Commands::Link { bug_id, change_id } => commands::link(&bug_id, &change_id),
+        Commands::Sweep => commands::sweep(),
     }
 }
