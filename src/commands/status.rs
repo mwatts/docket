@@ -79,6 +79,66 @@ pub fn done(id: &str) -> Result<()> {
         format!("{}", Status::Done).green()
     );
 
+    // Create a fresh jj change if the current one has content
+    create_fresh_change_if_needed()?;
+
+    Ok(())
+}
+
+/// Check if current jj change is empty and create a new one if needed
+fn create_fresh_change_if_needed() -> Result<()> {
+    // Check if current change is empty
+    let output = std::process::Command::new("jj")
+        .args(["log", "-r", "@", "--no-graph", "-T", "if(empty, \"empty\", \"has_changes\")"])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if result == "has_changes" {
+                // Current change has content, create a fresh one
+                let new_output = std::process::Command::new("jj")
+                    .args(["new"])
+                    .output()?;
+
+                if new_output.status.success() {
+                    println!(
+                        "{} Created fresh change for next task",
+                        "→".blue()
+                    );
+                } else {
+                    // Log the error but don't fail the done command
+                    let stderr = String::from_utf8_lossy(&new_output.stderr);
+                    eprintln!(
+                        "{} Failed to create new change: {}",
+                        "!".yellow(),
+                        stderr.trim()
+                    );
+                }
+            } else {
+                println!(
+                    "{} Current change is empty, ready for next task",
+                    "→".blue()
+                );
+            }
+        }
+        Ok(output) => {
+            // jj command failed - might not be in a jj repo
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if !stderr.is_empty() {
+                // Only warn if there's an actual error message, skip silently if not in jj repo
+                eprintln!(
+                    "{} Could not check change status: {}",
+                    "!".yellow(),
+                    stderr.trim()
+                );
+            }
+        }
+        Err(_) => {
+            // jj not available, silently skip
+        }
+    }
+
     Ok(())
 }
 
