@@ -81,6 +81,9 @@ pub fn done(id: &str) -> Result<()> {
         }
     }
 
+    // Re-open store after potential directory switch so events are written to the right location
+    let store = Store::open()?;
+
     if in_workspace {
         // Running from workspace - do the full workflow
         println!(
