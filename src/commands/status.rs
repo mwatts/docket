@@ -59,8 +59,28 @@ pub fn done(id: &str) -> Result<()> {
         ));
     }
 
+    // Track if we switched directories (so we can switch back)
+    let original_dir = std::env::current_dir().ok();
+    let mut switched_to_workspace = false;
+
     // Check if we're running from a workspace
-    let workspace_ctx = detect_workspace(&bug_id)?;
+    let mut workspace_ctx = detect_workspace(&bug_id)?;
+
+    // If not in workspace, check if one exists and switch to it
+    if workspace_ctx.is_none() {
+        if let Some(workspace_dir) = find_workspace_dir(&bug_id) {
+            println!(
+                "{} Found workspace at {}, switching...",
+                "→".blue(),
+                workspace_dir.display()
+            );
+            std::env::set_current_dir(&workspace_dir)?;
+            switched_to_workspace = true;
+            // Re-detect workspace context after directory change
+            workspace_ctx = detect_workspace(&bug_id)?;
+        }
+    }
+
     let in_workspace = workspace_ctx.is_some();
 
     if let Some(ref ctx) = workspace_ctx {
@@ -109,6 +129,18 @@ pub fn done(id: &str) -> Result<()> {
         }
     }
 
+    // Return to original directory if we switched
+    if switched_to_workspace {
+        if let Some(ref orig) = original_dir {
+            std::env::set_current_dir(orig)?;
+            println!(
+                "{} Returned to {}",
+                "→".blue(),
+                orig.display()
+            );
+        }
+    }
+
     // Emit StatusChanged event
     let status_event = Event::status_changed(bug_id.clone(), old_status.clone(), Status::Done);
     store.append_event(&status_event)?;
@@ -129,6 +161,30 @@ pub fn done(id: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Find workspace directory for a bug, looking at ../ws-{bug_id} relative to repo root
+fn find_workspace_dir(bug_id: &str) -> Option<std::path::PathBuf> {
+    // Try to find workspace relative to repo root
+    if let Ok(output) = std::process::Command::new("jj")
+        .args(["workspace", "root"])
+        .output()
+    {
+        if output.status.success() {
+            let repo_root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let workspace_dir = Path::new(&repo_root)
+                .parent()
+                .map(|p| p.join(format!("ws-{}", bug_id)));
+
+            if let Some(ref path) = workspace_dir {
+                if path.exists() && path.join(".docket/current.json").exists() {
+                    return workspace_dir;
+                }
+            }
+        }
+    }
+
+    None
 }
 
 /// Check if current jj change is empty and create a new one if needed
