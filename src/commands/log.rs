@@ -1,0 +1,79 @@
+use anyhow::Result;
+use colored::Colorize;
+
+use crate::event::EventData;
+use crate::store::Store;
+
+pub fn log(id: &str) -> Result<()> {
+    let store = Store::open()?;
+
+    // Resolve prefix to full ID
+    let full_id = store.resolve_id(id)?;
+
+    // Get all events for this bug
+    let events = store.get_events(&full_id)?;
+
+    if events.is_empty() {
+        println!("{} No events found for bug {}", "→".blue(), full_id.cyan());
+        return Ok(());
+    }
+
+    println!("{} Event history for bug {}\n", "→".blue(), full_id.cyan());
+
+    for event in &events {
+        let timestamp = event.timestamp.format("%Y-%m-%d %H:%M:%S UTC");
+        let actor = event.actor.as_deref().unwrap_or("unknown");
+
+        match &event.data {
+            EventData::Created {
+                title, priority, ..
+            } => {
+                println!(
+                    "{} {} [{}]",
+                    timestamp.to_string().dimmed(),
+                    "created".green(),
+                    actor.dimmed()
+                );
+                println!("    Title: {}", title);
+                println!("    Priority: {}", priority);
+            }
+            EventData::StatusChanged { from, to } => {
+                println!(
+                    "{} {} [{}]",
+                    timestamp.to_string().dimmed(),
+                    "status_changed".yellow(),
+                    actor.dimmed()
+                );
+                println!("    {} -> {}", format!("{}", from).dimmed(), format!("{}", to).green());
+            }
+            EventData::Updated { title, body } => {
+                println!(
+                    "{} {} [{}]",
+                    timestamp.to_string().dimmed(),
+                    "updated".blue(),
+                    actor.dimmed()
+                );
+                if let Some(t) = title {
+                    println!("    Title: {}", t);
+                }
+                if body.is_some() {
+                    println!("    Body updated");
+                }
+            }
+            EventData::ChangeLinked { change_id } => {
+                println!(
+                    "{} {} [{}]",
+                    timestamp.to_string().dimmed(),
+                    "change_linked".magenta(),
+                    actor.dimmed()
+                );
+                println!("    Change: {}", change_id.cyan());
+            }
+        }
+        println!();
+    }
+
+    println!("{} {} event(s) total", "→".blue(), events.len());
+
+    Ok(())
+}

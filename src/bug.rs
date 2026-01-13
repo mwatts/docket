@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
+// Note: Utc is used in BugMetadata for created timestamp
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Status {
@@ -88,39 +90,7 @@ pub struct Bug {
 }
 
 impl Bug {
-    pub fn new(id: String, title: String, priority: Priority) -> Self {
-        let metadata = BugMetadata {
-            id,
-            title,
-            status: Status::Draft,
-            priority,
-            created: Utc::now(),
-            changes: Vec::new(),
-        };
-
-        let body = r#"
-## Goal
-
-<!-- One-sentence description of success -->
-
-## Acceptance Criteria
-
-- [ ] First criterion
-
-## Context
-
-<!-- Background information, constraints, relevant details -->
-
-## Log
-
-<!-- Notes added during implementation -->
-"#
-        .trim_start()
-        .to_string();
-
-        Bug { metadata, body }
-    }
-
+    /// Parse a bug from markdown format (used for migration from legacy format)
     pub fn parse(content: &str) -> Result<Self> {
         let parts: Vec<&str> = content.splitn(3, "---").collect();
 
@@ -136,11 +106,6 @@ impl Bug {
         let metadata: BugMetadata = serde_yaml::from_str(yaml_content)?;
 
         Ok(Bug { metadata, body })
-    }
-
-    pub fn to_string(&self) -> Result<String> {
-        let yaml = serde_yaml::to_string(&self.metadata)?;
-        Ok(format!("---\n{}---\n\n{}\n", yaml, self.body))
     }
 
     pub fn id(&self) -> &str {
@@ -159,17 +124,7 @@ impl Bug {
         &self.metadata.priority
     }
 
-    pub fn set_status(&mut self, status: Status) {
-        self.metadata.status = status;
-    }
-
     pub fn changes(&self) -> &[String] {
         &self.metadata.changes
-    }
-
-    pub fn add_change(&mut self, change_id: String) {
-        if !self.metadata.changes.contains(&change_id) {
-            self.metadata.changes.push(change_id);
-        }
     }
 }

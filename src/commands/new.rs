@@ -2,7 +2,8 @@ use anyhow::Result;
 use colored::Colorize;
 use dialoguer::{Input, Select};
 
-use crate::bug::{Bug, Priority};
+use crate::bug::Priority;
+use crate::event::Event;
 use crate::store::Store;
 
 pub fn new(title: Option<String>, priority_str: &str, interactive: bool) -> Result<()> {
@@ -39,9 +40,27 @@ pub fn new(title: Option<String>, priority_str: &str, interactive: bool) -> Resu
     // Generate unique ID
     let id = store.generate_id()?;
 
-    // Create bug
-    let bug = Bug::new(id.clone(), title.clone(), priority);
-    store.save_bug(&bug)?;
+    // Create initial body template
+    let body = r#"## Goal
+
+<!-- One-sentence description of success -->
+
+## Acceptance Criteria
+
+- [ ] First criterion
+
+## Context
+
+<!-- Background information, constraints, relevant details -->
+
+## Log
+
+<!-- Notes added during implementation -->"#
+        .to_string();
+
+    // Emit Created event
+    let event = Event::created(id.clone(), title.clone(), priority, body);
+    store.append_event(&event)?;
 
     println!("{} Created bug {} - {}", "✓".green(), id.cyan(), title);
     println!(

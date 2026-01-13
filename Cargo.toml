@@ -12,6 +12,8 @@ serde_yaml = "0.9"
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
+uuid = { version = "1", features = ["v4"] }
+whoami = "1"
 glob = "0.3"
 colored = "2"
 dialoguer = "0.11"

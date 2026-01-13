@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::bug::Bug;
+use crate::event::{self, Event};
 
 const DOCKET_DIR: &str = ".docket";
 const BUGS_DIR: &str = "bugs";
@@ -70,14 +71,14 @@ impl Store {
         self.root.join(BUGS_DIR)
     }
 
-    /// Path to a specific bug file
+    /// Path to a specific bug's event log file
     fn bug_path(&self, id: &str) -> PathBuf {
-        self.bugs_dir().join(format!("{}.md", id))
+        self.bugs_dir().join(format!("{}.jsonl", id))
     }
 
     /// List all bugs
     pub fn list_bugs(&self) -> Result<Vec<Bug>> {
-        let pattern = self.bugs_dir().join("*.md");
+        let pattern = self.bugs_dir().join("*.jsonl");
         let pattern_str = pattern
             .to_str()
             .ok_or_else(|| anyhow!("invalid path encoding"))?;
@@ -86,13 +87,12 @@ impl Store {
 
         for entry in glob::glob(pattern_str)? {
             let path = entry?;
-            let content = fs::read_to_string(&path)
-                .with_context(|| format!("failed to read {}", path.display()))?;
+            let events = event::read_events(&path)?;
 
-            match Bug::parse(&content) {
+            match event::derive_bug(&events) {
                 Ok(bug) => bugs.push(bug),
                 Err(e) => {
-                    eprintln!("warning: failed to parse {}: {}", path.display(), e);
+                    eprintln!("warning: failed to derive bug from {}: {}", path.display(), e);
                 }
             }
         }
@@ -108,12 +108,12 @@ impl Store {
         // First try exact match
         let exact_path = self.bug_path(id);
         if exact_path.exists() {
-            let content = fs::read_to_string(&exact_path)?;
-            return Bug::parse(&content);
+            let events = event::read_events(&exact_path)?;
+            return event::derive_bug(&events);
         }
 
         // Try prefix match
-        let pattern = self.bugs_dir().join(format!("{}*.md", id));
+        let pattern = self.bugs_dir().join(format!("{}*.jsonl", id));
         let pattern_str = pattern
             .to_str()
             .ok_or_else(|| anyhow!("invalid path encoding"))?;
@@ -123,8 +123,8 @@ impl Store {
         match matches.len() {
             0 => Err(anyhow!("bug not found: {}", id)),
             1 => {
-                let content = fs::read_to_string(&matches[0])?;
-                Bug::parse(&content)
+                let events = event::read_events(&matches[0])?;
+                event::derive_bug(&events)
             }
             _ => {
                 let ids: Vec<_> = matches
@@ -141,12 +141,59 @@ impl Store {
         }
     }
 
-    /// Save a bug to disk
-    pub fn save_bug(&self, bug: &Bug) -> Result<()> {
-        let path = self.bug_path(bug.id());
-        let content = bug.to_string()?;
-        fs::write(&path, content).with_context(|| format!("failed to write {}", path.display()))?;
-        Ok(())
+    /// Append an event to a bug's event log
+    pub fn append_event(&self, event: &Event) -> Result<()> {
+        let path = self.bug_path(&event.bug_id);
+        event::append_event(&path, event)
+    }
+
+    /// Get all events for a bug
+    pub fn get_events(&self, id: &str) -> Result<Vec<Event>> {
+        let path = self.bug_path(id);
+        if !path.exists() {
+            return Err(anyhow!("bug not found: {}", id));
+        }
+        event::read_events(&path)
+    }
+
+    /// Resolve a bug ID prefix to the full ID
+    pub fn resolve_id(&self, id: &str) -> Result<String> {
+        // First try exact match
+        let exact_path = self.bug_path(id);
+        if exact_path.exists() {
+            return Ok(id.to_string());
+        }
+
+        // Try prefix match
+        let pattern = self.bugs_dir().join(format!("{}*.jsonl", id));
+        let pattern_str = pattern
+            .to_str()
+            .ok_or_else(|| anyhow!("invalid path encoding"))?;
+
+        let matches: Vec<_> = glob::glob(pattern_str)?.collect::<Result<Vec<_>, _>>()?;
+
+        match matches.len() {
+            0 => Err(anyhow!("bug not found: {}", id)),
+            1 => {
+                let full_id = matches[0]
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .ok_or_else(|| anyhow!("invalid file name"))?;
+                Ok(full_id.to_string())
+            }
+            _ => {
+                let ids: Vec<_> = matches
+                    .iter()
+                    .filter_map(|p| p.file_stem())
+                    .filter_map(|s| s.to_str())
+                    .collect();
+                Err(anyhow!(
+                    "ambiguous bug ID '{}', matches: {}",
+                    id,
+                    ids.join(", ")
+                ))
+            }
+        }
     }
 
     /// Generate a unique bug ID

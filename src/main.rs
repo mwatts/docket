@@ -90,6 +90,15 @@ enum Commands {
         change_id: String,
     },
 
+    /// Show event history for a bug
+    Log {
+        /// Bug ID (prefix match supported)
+        id: String,
+    },
+
+    /// Migrate markdown bugs to JSONL format (one-time migration)
+    Migrate,
+
     /// Auto-close bugs whose linked changes have been merged to trunk
     Sweep,
 
@@ -124,6 +133,8 @@ fn main() -> Result<()> {
             auto,
         } => commands::work(&id, skip_permissions, auto),
         Commands::Link { bug_id, change_id } => commands::link(&bug_id, &change_id),
+        Commands::Log { id } => commands::log(&id),
+        Commands::Migrate => commands::migrate(),
         Commands::Sweep => commands::sweep(),
         Commands::Cleanup { id } => commands::cleanup(id.as_deref()),
     }

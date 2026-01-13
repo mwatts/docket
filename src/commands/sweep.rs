@@ -3,6 +3,7 @@ use colored::Colorize;
 use std::process::Command;
 
 use crate::bug::Status;
+use crate::event::Event;
 use crate::store::Store;
 
 pub fn sweep() -> Result<()> {
@@ -11,7 +12,7 @@ pub fn sweep() -> Result<()> {
 
     let mut closed_count = 0;
 
-    for mut bug in bugs {
+    for bug in bugs {
         // Skip bugs that are already done or have no linked changes
         if matches!(bug.status(), Status::Done) {
             continue;
@@ -27,14 +28,18 @@ pub fn sweep() -> Result<()> {
 
         if all_merged {
             let old_status = bug.status().clone();
-            bug.set_status(Status::Done);
-            store.save_bug(&bug)?;
+            let bug_id = bug.id().to_string();
+            let bug_title = bug.title().to_string();
+
+            // Emit StatusChanged event
+            let event = Event::status_changed(bug_id.clone(), old_status.clone(), Status::Done);
+            store.append_event(&event)?;
 
             println!(
                 "{} Closed bug {} - {} ({} -> {})",
                 "✓".green(),
-                bug.id().cyan(),
-                bug.title(),
+                bug_id.cyan(),
+                bug_title,
                 format!("{}", old_status).dimmed(),
                 "done".green()
             );

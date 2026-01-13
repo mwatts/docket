@@ -3,33 +3,33 @@ use colored::Colorize;
 use std::path::Path;
 
 use crate::bug::Status;
+use crate::event::Event;
 use crate::store::Store;
 
 fn set_status(id: &str, new_status: Status, action: &str) -> Result<()> {
     let store = Store::open()?;
-    let mut bug = store.get_bug(id)?;
+    let bug = store.get_bug(id)?;
 
     let old_status = bug.status().clone();
+    let bug_id = bug.id().to_string();
 
     // Validate transition
-    match (&old_status, &new_status) {
-        (Status::Done, _) => {
-            return Err(anyhow!(
-                "cannot change status of completed bug '{}'",
-                bug.id()
-            ));
-        }
-        _ => {}
+    if matches!(old_status, Status::Done) {
+        return Err(anyhow!(
+            "cannot change status of completed bug '{}'",
+            bug_id
+        ));
     }
 
-    bug.set_status(new_status.clone());
-    store.save_bug(&bug)?;
+    // Emit StatusChanged event
+    let event = Event::status_changed(bug_id.clone(), old_status.clone(), new_status.clone());
+    store.append_event(&event)?;
 
     println!(
         "{} {} bug {} ({} -> {})",
         "✓".green(),
         action,
-        bug.id().cyan(),
+        bug_id.cyan(),
         format!("{}", old_status).dimmed(),
         format!("{}", new_status).green()
     );
@@ -47,19 +47,20 @@ pub fn start(id: &str) -> Result<()> {
 
 pub fn done(id: &str) -> Result<()> {
     let store = Store::open()?;
-    let mut bug = store.get_bug(id)?;
+    let bug = store.get_bug(id)?;
 
     let old_status = bug.status().clone();
+    let bug_id = bug.id().to_string();
 
     if matches!(old_status, Status::Done) {
         return Err(anyhow!(
             "cannot change status of completed bug '{}'",
-            bug.id()
+            bug_id
         ));
     }
 
     // Check if we're running from a workspace
-    let workspace_ctx = detect_workspace(bug.id())?;
+    let workspace_ctx = detect_workspace(&bug_id)?;
     let in_workspace = workspace_ctx.is_some();
 
     if let Some(ref ctx) = workspace_ctx {
@@ -67,7 +68,7 @@ pub fn done(id: &str) -> Result<()> {
         println!(
             "{} Running from workspace for bug {}",
             "→".blue(),
-            bug.id().cyan()
+            bug_id.cyan()
         );
 
         // 1. Snapshot any uncommitted changes
@@ -79,25 +80,28 @@ pub fn done(id: &str) -> Result<()> {
 
         // 3. Link the change to the bug
         if let Some(change_id) = get_current_change_id()? {
-            bug.add_change(change_id.clone());
+            let link_event = Event::change_linked(bug_id.clone(), change_id.clone());
+            store.append_event(&link_event)?;
             println!(
                 "{} Linked change {} to bug {}",
                 "✓".green(),
                 change_id.cyan(),
-                bug.id().cyan()
+                bug_id.cyan()
             );
         }
 
         // 4. Sync updated body from workspace
-        bug.body = ctx.body.clone();
+        let update_event = Event::updated(bug_id.clone(), None, Some(ctx.body.clone()));
+        store.append_event(&update_event)?;
         println!(
             "{} Synced acceptance criteria from workspace",
             "→".blue()
         );
     } else {
         // Not in workspace - try to sync body from current.json if it exists
-        if let Some(updated_body) = find_and_read_current_json(bug.id())? {
-            bug.body = updated_body;
+        if let Some(updated_body) = find_and_read_current_json(&bug_id)? {
+            let update_event = Event::updated(bug_id.clone(), None, Some(updated_body));
+            store.append_event(&update_event)?;
             println!(
                 "{} Synced acceptance criteria from workspace",
                 "→".blue()
@@ -105,14 +109,15 @@ pub fn done(id: &str) -> Result<()> {
         }
     }
 
-    bug.set_status(Status::Done);
-    store.save_bug(&bug)?;
+    // Emit StatusChanged event
+    let status_event = Event::status_changed(bug_id.clone(), old_status.clone(), Status::Done);
+    store.append_event(&status_event)?;
 
     println!(
         "{} {} bug {} ({} -> {})",
         "✓".green(),
         "Completed",
-        bug.id().cyan(),
+        bug_id.cyan(),
         format!("{}", old_status).dimmed(),
         format!("{}", Status::Done).green()
     );
