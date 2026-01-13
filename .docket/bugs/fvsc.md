@@ -1,7 +1,7 @@
 ---
 id: fvsc
 title: Create docket:implement Claude Code skill
-status: draft
+status: approved
 priority: high
 created: 2026-01-13T02:53:21.622112628Z
 ---
@@ -31,4 +31,3 @@ The skill should pick up from there and guide the agent through implementation.
 The skill should be namespaced as `docket:implement` so repos can have their own implement skills.
 
 ## Log
-
