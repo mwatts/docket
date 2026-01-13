@@ -71,6 +71,14 @@ enum Commands {
     Work {
         /// Bug ID (prefix match supported)
         id: String,
+
+        /// Skip permission prompts in Claude (--dangerously-skip-permissions)
+        #[arg(long)]
+        skip_permissions: bool,
+
+        /// Automatically run /docket:implement on startup
+        #[arg(long)]
+        auto: bool,
     },
 
     /// Link a jj change to a bug
@@ -110,7 +118,11 @@ fn main() -> Result<()> {
         Commands::Approve { id } => commands::approve(&id),
         Commands::Start { id } => commands::start(&id),
         Commands::Done { id } => commands::done(&id),
-        Commands::Work { id } => commands::work(&id),
+        Commands::Work {
+            id,
+            skip_permissions,
+            auto,
+        } => commands::work(&id, skip_permissions, auto),
         Commands::Link { bug_id, change_id } => commands::link(&bug_id, &change_id),
         Commands::Sweep => commands::sweep(),
         Commands::Cleanup { id } => commands::cleanup(&id),

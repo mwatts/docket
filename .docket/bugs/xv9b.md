@@ -1,7 +1,7 @@
 ---
 id: xv9b
 title: docket work should support --dangerously-skip-permissions and auto-run skill
-status: draft
+status: done
 priority: high
 created: 2026-01-13T05:05:01.048656867Z
 ---
@@ -12,10 +12,10 @@ Make `docket work` launch Claude with optimal settings for autonomous work - ski
 
 ## Acceptance Criteria
 
-- [ ] Add `--dangerously-skip-permissions` flag to claude invocation (or make configurable)
-- [ ] Add `--prompt "/docket:implement"` to auto-run the skill on startup
-- [ ] Consider adding docket config file for these preferences (e.g., `.docket/config.toml`)
-- [ ] Document the flags being passed to claude
+- [x] Add `--dangerously-skip-permissions` flag to claude invocation (or make configurable)
+- [x] Add `--prompt "/docket:implement"` to auto-run the skill on startup
+- [x] Consider adding docket config file for these preferences (e.g., `.docket/config.toml`)
+- [x] Document the flags being passed to claude
 
 ## Context
 
@@ -35,3 +35,7 @@ Could be:
 
 ## Log
 
+- 2026-01-12: Implemented CLI flags `--skip-permissions` and `--auto` for the work command
+- 2026-01-12: Added config file support via `.docket/config.toml` with `[work]` section
+- 2026-01-12: Updated claude invocation to pass `--dangerously-skip-permissions` and `--prompt "/docket:implement"` flags
+- 2026-01-12: Added documentation in code comments and CLI help text

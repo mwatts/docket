@@ -4,10 +4,31 @@ use std::os::unix::process::CommandExt;
 use std::process::Command;
 
 use crate::bug::Status;
+use crate::config::Config;
 use crate::store::Store;
 
-pub fn work(id: &str) -> Result<()> {
+/// Start working on a bug by creating a jj workspace and launching Claude.
+///
+/// # Claude Flags
+///
+/// The following flags can be passed to `claude`:
+///
+/// - `--dangerously-skip-permissions`: Skips all permission prompts in Claude,
+///   allowing autonomous file operations. Use with caution.
+///
+/// - `--prompt "/docket:implement"`: Automatically runs the docket:implement
+///   skill on startup, so you don't have to type it manually.
+///
+/// These can be enabled via:
+/// - CLI flags: `docket work --skip-permissions --auto <id>`
+/// - Config file: `.docket/config.toml` with `[work]` section
+///
+/// CLI flags take precedence over config file settings.
+pub fn work(id: &str, skip_permissions: bool, auto: bool) -> Result<()> {
     let store = Store::open()?;
+
+    // Load config to merge with CLI flags
+    let config = Config::load(store.root())?;
     let bug = store.get_bug(id)?;
 
     // Warn if not approved
@@ -98,6 +119,10 @@ pub fn work(id: &str) -> Result<()> {
     std::fs::write(&context_path, serde_json::to_string_pretty(&context)?)
         .context("failed to write context file")?;
 
+    // Merge CLI flags with config (CLI takes precedence)
+    let use_skip_permissions = skip_permissions || config.work.skip_permissions;
+    let use_auto = auto || config.work.auto_implement;
+
     println!(
         "{} Starting work on {} - {}",
         "✓".green(),
@@ -105,11 +130,33 @@ pub fn work(id: &str) -> Result<()> {
         bug.title()
     );
     println!("{} Workspace: {}", "→".blue(), workspace_path);
+
+    // Build claude command with appropriate flags
+    let mut claude_args: Vec<&str> = Vec::new();
+
+    if use_skip_permissions {
+        claude_args.push("--dangerously-skip-permissions");
+        println!(
+            "{} Skipping permission prompts (--dangerously-skip-permissions)",
+            "→".blue()
+        );
+    }
+
+    if use_auto {
+        claude_args.push("--prompt");
+        claude_args.push("/docket:implement");
+        println!(
+            "{} Auto-running /docket:implement skill",
+            "→".blue()
+        );
+    }
+
     println!("{} Launching Claude Code...", "→".blue());
     println!();
 
-    // Exec claude with environment variable
+    // Exec claude with environment variable and optional flags
     let err = Command::new("claude")
+        .args(&claude_args)
         .env("DOCKET_BUG", &bug_id)
         .exec();
 
