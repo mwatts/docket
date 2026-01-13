@@ -84,6 +84,12 @@ enum Commands {
 
     /// Auto-close bugs whose linked changes have been merged to trunk
     Sweep,
+
+    /// Clean up a workspace after work is complete
+    Cleanup {
+        /// Bug ID (prefix match supported)
+        id: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -107,5 +113,6 @@ fn main() -> Result<()> {
         Commands::Work { id } => commands::work(&id),
         Commands::Link { bug_id, change_id } => commands::link(&bug_id, &change_id),
         Commands::Sweep => commands::sweep(),
+        Commands::Cleanup { id } => commands::cleanup(&id),
     }
 }

@@ -1,3 +1,4 @@
+pub mod cleanup;
 pub mod init;
 pub mod link;
 pub mod list;
@@ -7,6 +8,7 @@ pub mod status;
 pub mod sweep;
 pub mod work;
 
+pub use cleanup::cleanup;
 pub use init::init;
 pub use link::link;
 pub use list::list;
