@@ -4,7 +4,7 @@ Generate a commit message for the current changes following Google's CL descript
 
 ## Instructions
 
-1. Run `jj show` to see the current changes (files modified and diff)
+1. Run `jj show --git` to see the current changes (files modified and diff)
 2. Run `cargo run -- show $DOCKET_BUG` to get the bug title and description for context
 
 ## Commit Message Format
