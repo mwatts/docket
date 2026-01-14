@@ -19,7 +19,7 @@ fn generate_commit_message(bug_id: &str) -> Option<String> {
     let output = Command::new("claude")
         .args([
             "-p",
-            "/docket:describe",
+            "/docket-describe",
             "--model",
             "haiku",
             "--allowedTools",

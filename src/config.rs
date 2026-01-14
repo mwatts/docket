@@ -19,7 +19,7 @@ pub struct WorkConfig {
     #[serde(default)]
     pub skip_permissions: bool,
 
-    /// Automatically run the /docket:implement skill on startup
+    /// Automatically run the /docket-implement skill on startup
     #[serde(default)]
     pub auto_implement: bool,
 }

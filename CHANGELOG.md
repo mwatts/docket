@@ -29,8 +29,8 @@ Initial release of docket - task tracking for AI-assisted development.
 
 ### Claude Code Integration
 
-- **`/docket:implement` skill** - Guides Claude through bug implementation
-- **`/docket:describe` skill** - Generates commit messages from bug context
+- **`/docket-implement` skill** - Guides Claude through bug implementation
+- **`/docket-describe` skill** - Generates commit messages from bug context
 - **`docket work`** launches Claude with:
   - `DOCKET_BUG` environment variable set
   - Optional `--skip-permissions` and `--auto` flags

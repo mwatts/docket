@@ -96,7 +96,7 @@ enum Commands {
         #[arg(long)]
         skip_permissions: bool,
 
-        /// Automatically run /docket:implement on startup
+        /// Automatically run /docket-implement on startup
         #[arg(long)]
         auto: bool,
     },

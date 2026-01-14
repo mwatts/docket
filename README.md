@@ -77,7 +77,7 @@ docket work abc1
 This:
 - Creates a `ws-abc1` workspace (if needed)
 - Sets `DOCKET_BUG=abc1` environment variable
-- Launches Claude with the `/docket:implement` skill
+- Launches Claude with the `/docket-implement` skill
 
 Claude can then read the bug with `cargo run -- show $DOCKET_BUG` and update progress.
 
@@ -89,7 +89,7 @@ When finished:
 docket done abc1
 ```
 
-This generates a commit message using Claude's `/docket:describe` skill and updates the Jujutsu change.
+This generates a commit message using Claude's `/docket-describe` skill and updates the Jujutsu change.
 
 ## Commands
 
@@ -115,7 +115,7 @@ Create `.docket/config.toml` to customize behavior:
 ```toml
 [work]
 skip_permissions = true  # Skip Claude permission prompts
-auto_implement = true    # Auto-run /docket:implement skill
+auto_implement = true    # Auto-run /docket-implement skill
 ```
 
 ## Example Workflow
