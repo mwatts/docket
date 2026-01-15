@@ -378,7 +378,7 @@ fn compare_bugs(a: &Bug, b: &Bug, sort_by: SortBy) -> Ordering {
     let b_approved = !matches!(b.status(), Status::Draft);
 
     match (a_approved, b_approved) {
-        (true, false) => Ordering::Less,    // a is approved, b is draft -> a first
+        (true, false) => Ordering::Less, // a is approved, b is draft -> a first
         (false, true) => Ordering::Greater, // a is draft, b is approved -> b first
         _ => {
             // Both in same approval group, use secondary sort
