@@ -95,9 +95,9 @@ fn main() -> Result<()> {
         Commands::Tag { id, tag } => commands::tag(&id, &tag),
         Commands::Untag { id, tag } => commands::untag(&id, &tag),
         Commands::Approve { id } => commands::approve(&id),
-        Commands::Done { id } => {
+        Commands::Done { id, auto, force } => {
             let id = resolve_bug_id(id)?;
-            commands::done(&id)
+            commands::done(&id, auto, force)
         }
         Commands::Work {
             id,
