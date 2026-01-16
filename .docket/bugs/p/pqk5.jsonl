@@ -4,3 +4,4 @@
 {"id":"03cd3676-a707-41c6-a4b8-cd2cf3218be0","bug_id":"pqk5","timestamp":"2026-01-16T00:03:57.282549517Z","type":"changelog_type_set","data":{"changelog_type":"change"},"actor":"DESKTOP-VV370NK"}
 {"id":"abe36d15-da18-43f9-ac02-3228af466101","bug_id":"pqk5","timestamp":"2026-01-16T00:04:02.559539050Z","type":"status_changed","data":{"from":"approved","to":"done"},"actor":"DESKTOP-VV370NK"}
 {"id":"49f92b09-0f42-44b7-9564-db14e613410a","bug_id":"pqk5","timestamp":"2026-01-16T00:04:48.541523786Z","type":"status_changed","data":{"from":"approved","to":"done"},"actor":"DESKTOP-VV370NK"}
+{"version":1,"id":"9dad4060-4d40-4bbf-8bb8-02fa4ae0b7a3","bug_id":"pqk5","timestamp":"2026-01-16T01:16:18.200961994Z","type":"version_added","data":{"version":"0.2.0"},"actor":"DESKTOP-VV370NK"}

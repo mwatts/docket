@@ -2,6 +2,38 @@
 
 All notable changes to docket will be documented in this file.
 
+## [0.2.0] - 2026-01-16
+
+### Added
+
+- Add bug dependencies (izma)
+- Add sorting options to list command (qoss)
+- Add version and changelog management (mw8u)
+- Add epic bugs for multi-step features (5uzi)
+- Add docket ready command (83xj)
+- Add shell completions (u2si)
+- Allow Claude to mark bugs done automatically (1slg)
+- Add configurable bug templates (8c4q)
+- Show workspace status in list output (lgg1)
+- Add bug dependencies (blocks/blocked-by) (0lol)
+- Add tags/labels system (kidu)
+- Add Paused status for bugs (129t)
+- Add Review status for bugs (e48h)
+- Add Blocked status for bugs (mgzs)
+- Add fuzzy ID matching (x5nj)
+- Add interactive mode for list command (kfo6)
+- Add workspace-aware defaults (docket current) (sx8n)
+- Add docket edit command (5p7d)
+
+### Changed
+
+- Add directory sharding for scalability (ueeu)
+- Make done command more explicit with subcommands (pqk5)
+
+### Fixed
+
+- Add atomic event writes (transactions) (37ff)
+
 ## [0.1.0] - 2026-01-14
 
 Initial release of docket - task tracking for AI-assisted development.
