@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
 
-use docket::cli::{Cli, Commands};
+use docket::cli::{Cli, Commands, ListArgs, NewArgs, ReleaseCommands, UpdateArgs};
 use docket::commands;
 use docket::workspace;
 
@@ -24,18 +24,20 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Init => commands::init(),
-        Commands::New {
-            title,
-            priority,
-            body,
-            template,
-            changelog,
-            version,
-            tag,
-            parent,
-            epic,
-            edit,
-        } => {
+        Commands::New(args) => {
+            let NewArgs {
+                title,
+                priority,
+                body,
+                template,
+                changelog,
+                version,
+                tag,
+                parent,
+                epic,
+                edit,
+                release,
+            } = *args;
             let interactive = title.is_none();
             // parent takes precedence over epic (epic is legacy alias)
             let parent_id = parent.or(epic);
@@ -50,26 +52,30 @@ fn main() -> Result<()> {
                 &tag,
                 parent_id.as_deref(),
                 edit,
+                release.as_deref(),
             )
         }
-        Commands::List {
-            status,
-            priority,
-            all,
-            review,
-            blocked,
-            paused,
-            sort,
-            reverse,
-            interactive,
-            version,
-            no_version,
-            changelog,
-            tag,
-            blocking,
-            depends_on,
-            flat,
-        } => {
+        Commands::List(args) => {
+            let ListArgs {
+                status,
+                priority,
+                all,
+                review,
+                blocked,
+                paused,
+                sort,
+                reverse,
+                interactive,
+                version,
+                no_version,
+                changelog,
+                tag,
+                blocking,
+                depends_on,
+                flat,
+                release,
+                unscheduled,
+            } = *args;
             // --review and --blocked flags are shorthand for --status
             let status_filter = if review {
                 Some("review".to_string())
@@ -93,22 +99,26 @@ fn main() -> Result<()> {
                 blocking,
                 depends_on.as_deref(),
                 flat,
+                release.as_deref(),
+                unscheduled,
             )
         }
         Commands::Show { id } => {
             let id = resolve_change_id(id)?;
             commands::show(&id)
         }
-        Commands::Update {
-            id,
-            title,
-            body,
-            priority,
-            status,
-            changelog,
-            version,
-            remove_version,
-        } => {
+        Commands::Update(args) => {
+            let UpdateArgs {
+                id,
+                title,
+                body,
+                priority,
+                status,
+                changelog,
+                version,
+                remove_version,
+                release: _release, // TODO: integrate with commands::update when ready
+            } = *args;
             let id = resolve_change_id(id)?;
             commands::update(
                 &id,
@@ -215,5 +225,30 @@ fn main() -> Result<()> {
         Commands::Scratch { id, content } => commands::scratch(&id, &content),
         Commands::Reparent { id, parent } => commands::reparent(&id, parent.as_deref()),
         Commands::Graph { id, all } => commands::graph(id.as_deref(), all),
+        Commands::Release(release_cmd) => match release_cmd {
+            ReleaseCommands::New {
+                version,
+                title,
+                body,
+                target_date,
+                edit,
+            } => commands::release::new(
+                &version,
+                title.as_deref(),
+                body.as_deref(),
+                target_date.as_deref(),
+                edit,
+            ),
+            ReleaseCommands::List { all } => commands::release::list(all),
+            ReleaseCommands::Show { version } => commands::release::show(&version),
+            ReleaseCommands::Edit { version } => commands::release::edit(&version),
+            ReleaseCommands::Activate { version } => commands::release::activate(&version),
+            ReleaseCommands::Freeze { version } => commands::release::freeze(&version),
+            ReleaseCommands::Ship { version } => commands::release::ship(&version),
+            ReleaseCommands::Cancel { version } => commands::release::cancel(&version),
+            ReleaseCommands::Schedule { change_id, version } => {
+                commands::release::schedule(&change_id, &version)
+            }
+        },
     }
 }

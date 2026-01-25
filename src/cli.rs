@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use clap_complete::engine::{ArgValueCompleter, CompletionCandidate};
 
 use crate::store::Store;
@@ -36,120 +36,184 @@ pub struct Cli {
     pub command: Commands,
 }
 
+/// Arguments for the 'new' command (boxed to reduce enum size)
+#[derive(Args)]
+pub struct NewArgs {
+    /// Change title (if not provided, will prompt interactively)
+    #[arg(short, long)]
+    pub title: Option<String>,
+
+    /// Priority level
+    #[arg(short, long, default_value = "medium")]
+    pub priority: String,
+
+    /// Read body from file (use - for stdin)
+    #[arg(short, long)]
+    pub body: Option<String>,
+
+    /// Template to use for change body (e.g., default, feature, bugfix, chore, spike)
+    #[arg(long)]
+    pub template: Option<String>,
+
+    /// Changelog type (feature, fix, change, deprecated, removed, security, internal)
+    #[arg(short, long)]
+    pub changelog: Option<String>,
+
+    /// Version to assign to this change (can be added multiple times for backports)
+    /// DEPRECATED: use --release instead
+    #[arg(short, long)]
+    pub version: Option<String>,
+
+    /// Tags to assign to this change (can be used multiple times)
+    #[arg(long)]
+    pub tag: Vec<String>,
+
+    /// Create as a child (sub-change) of another change
+    #[arg(long, add = ArgValueCompleter::new(complete_change_id))]
+    pub parent: Option<String>,
+
+    /// Create as a child step of an epic (legacy, alias for --parent)
+    #[arg(short = 'e', long, add = ArgValueCompleter::new(complete_change_id), hide = true)]
+    pub epic: Option<String>,
+
+    /// Open editor immediately after creation to edit the body
+    #[arg(long)]
+    pub edit: bool,
+
+    /// Target release version (defaults to "unscheduled")
+    #[arg(short = 'r', long)]
+    pub release: Option<String>,
+}
+
+/// Arguments for the 'list' command (boxed to reduce enum size)
+#[derive(Args)]
+pub struct ListArgs {
+    /// Filter by status
+    #[arg(short, long)]
+    pub status: Option<String>,
+
+    /// Filter by priority
+    #[arg(short, long)]
+    pub priority: Option<String>,
+
+    /// Show all changes including done
+    #[arg(short, long)]
+    pub all: bool,
+
+    /// Show only changes in review (shorthand for --status review)
+    #[arg(long)]
+    pub review: bool,
+
+    /// Show only blocked changes (shorthand for --status blocked)
+    #[arg(long)]
+    pub blocked: bool,
+
+    /// Show paused changes (hidden by default like done changes)
+    #[arg(long)]
+    pub paused: bool,
+
+    /// Sort by field (priority, created, status)
+    #[arg(long, default_value = "priority")]
+    pub sort: String,
+
+    /// Reverse the sort order
+    #[arg(short, long)]
+    pub reverse: bool,
+
+    /// Interactive mode for selecting and acting on changes
+    #[arg(short, long)]
+    pub interactive: bool,
+
+    /// Filter by version (DEPRECATED: use --release instead)
+    #[arg(short, long)]
+    pub version: Option<String>,
+
+    /// Show only changes without a version (unreleased)
+    /// DEPRECATED: use --unscheduled instead
+    #[arg(long)]
+    pub no_version: bool,
+
+    /// Filter by changelog type
+    #[arg(short, long)]
+    pub changelog: Option<String>,
+
+    /// Filter by tag
+    #[arg(long)]
+    pub tag: Option<String>,
+
+    /// Show only changes that block other changes
+    #[arg(long)]
+    pub blocking: bool,
+
+    /// Show only changes blocked by a specific change ID
+    #[arg(long, value_name = "ID", add = ArgValueCompleter::new(complete_change_id))]
+    pub depends_on: Option<String>,
+
+    /// Show as flat list instead of tree structure
+    #[arg(long)]
+    pub flat: bool,
+
+    /// Filter by target release version
+    #[arg(long, value_name = "VERSION")]
+    pub release: Option<String>,
+
+    /// Show only unscheduled changes (not assigned to any release)
+    #[arg(long)]
+    pub unscheduled: bool,
+}
+
+/// Arguments for the 'update' command (boxed to reduce enum size)
+#[derive(Args)]
+pub struct UpdateArgs {
+    /// Change ID (prefix match supported). If not provided, uses current workspace change.
+    #[arg(add = ArgValueCompleter::new(complete_change_id))]
+    pub id: Option<String>,
+
+    /// New title for the change
+    #[arg(short, long)]
+    pub title: Option<String>,
+
+    /// Read body from file (use - for stdin)
+    #[arg(short, long)]
+    pub body: Option<String>,
+
+    /// New priority level (low, medium, high)
+    #[arg(short, long)]
+    pub priority: Option<String>,
+
+    /// New status (draft, approved, in-progress, done, not-planned)
+    #[arg(short, long)]
+    pub status: Option<String>,
+
+    /// Changelog type (feature, fix, change, deprecated, removed, security, internal)
+    #[arg(short, long)]
+    pub changelog: Option<String>,
+
+    /// Add a version to this change (can be used multiple times for backports)
+    /// DEPRECATED: use 'docket release schedule' instead
+    #[arg(short, long)]
+    pub version: Option<String>,
+
+    /// Remove a version from this change
+    /// DEPRECATED: use 'docket release schedule' instead
+    #[arg(long)]
+    pub remove_version: Option<String>,
+
+    /// Target release version to schedule this change for
+    #[arg(short = 'r', long)]
+    pub release: Option<String>,
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Initialize a new docket repository
     Init,
 
     /// Create a new change
-    New {
-        /// Change title (if not provided, will prompt interactively)
-        #[arg(short, long)]
-        title: Option<String>,
-
-        /// Priority level
-        #[arg(short, long, default_value = "medium")]
-        priority: String,
-
-        /// Read body from file (use - for stdin)
-        #[arg(short, long)]
-        body: Option<String>,
-
-        /// Template to use for change body (e.g., default, feature, bugfix, chore, spike)
-        #[arg(long)]
-        template: Option<String>,
-
-        /// Changelog type (feature, fix, change, deprecated, removed, security, internal)
-        #[arg(short, long)]
-        changelog: Option<String>,
-
-        /// Version to assign to this change (can be added multiple times for backports)
-        #[arg(short, long)]
-        version: Option<String>,
-
-        /// Tags to assign to this change (can be used multiple times)
-        #[arg(long)]
-        tag: Vec<String>,
-
-        /// Create as a child (sub-change) of another change
-        #[arg(long, add = ArgValueCompleter::new(complete_change_id))]
-        parent: Option<String>,
-
-        /// Create as a child step of an epic (legacy, alias for --parent)
-        #[arg(short = 'e', long, add = ArgValueCompleter::new(complete_change_id), hide = true)]
-        epic: Option<String>,
-
-        /// Open editor immediately after creation to edit the body
-        #[arg(long)]
-        edit: bool,
-    },
+    New(Box<NewArgs>),
 
     /// List all changes
-    List {
-        /// Filter by status
-        #[arg(short, long)]
-        status: Option<String>,
-
-        /// Filter by priority
-        #[arg(short, long)]
-        priority: Option<String>,
-
-        /// Show all changes including done
-        #[arg(short, long)]
-        all: bool,
-
-        /// Show only changes in review (shorthand for --status review)
-        #[arg(long)]
-        review: bool,
-
-        /// Show only blocked changes (shorthand for --status blocked)
-        #[arg(long)]
-        blocked: bool,
-
-        /// Show paused changes (hidden by default like done changes)
-        #[arg(long)]
-        paused: bool,
-
-        /// Sort by field (priority, created, status)
-        #[arg(long, default_value = "priority")]
-        sort: String,
-
-        /// Reverse the sort order
-        #[arg(short, long)]
-        reverse: bool,
-
-        /// Interactive mode for selecting and acting on changes
-        #[arg(short, long)]
-        interactive: bool,
-
-        /// Filter by version
-        #[arg(short, long)]
-        version: Option<String>,
-
-        /// Show only changes without a version (unreleased)
-        #[arg(long)]
-        no_version: bool,
-
-        /// Filter by changelog type
-        #[arg(short, long)]
-        changelog: Option<String>,
-
-        /// Filter by tag
-        #[arg(long)]
-        tag: Option<String>,
-
-        /// Show only changes that block other changes
-        #[arg(long)]
-        blocking: bool,
-
-        /// Show only changes blocked by a specific change ID
-        #[arg(long, value_name = "ID", add = ArgValueCompleter::new(complete_change_id))]
-        depends_on: Option<String>,
-
-        /// Show as flat list instead of tree structure
-        #[arg(long)]
-        flat: bool,
-    },
+    List(Box<ListArgs>),
 
     /// Show details of a change (uses current workspace change if no ID provided)
     Show {
@@ -159,39 +223,7 @@ pub enum Commands {
     },
 
     /// Update a change's title, body, priority, or status (uses current workspace change if no ID provided)
-    Update {
-        /// Change ID (prefix match supported). If not provided, uses current workspace change.
-        #[arg(add = ArgValueCompleter::new(complete_change_id))]
-        id: Option<String>,
-
-        /// New title for the change
-        #[arg(short, long)]
-        title: Option<String>,
-
-        /// Read body from file (use - for stdin)
-        #[arg(short, long)]
-        body: Option<String>,
-
-        /// New priority level (low, medium, high)
-        #[arg(short, long)]
-        priority: Option<String>,
-
-        /// New status (draft, approved, in-progress, done, not-planned)
-        #[arg(short, long)]
-        status: Option<String>,
-
-        /// Changelog type (feature, fix, change, deprecated, removed, security, internal)
-        #[arg(short, long)]
-        changelog: Option<String>,
-
-        /// Add a version to this change (can be used multiple times for backports)
-        #[arg(short, long)]
-        version: Option<String>,
-
-        /// Remove a version from this change
-        #[arg(long)]
-        remove_version: Option<String>,
-    },
+    Update(Box<UpdateArgs>),
 
     /// Add a tag to a change
     Tag {
@@ -490,5 +522,87 @@ pub enum Commands {
         /// Show all changes including done and not-planned
         #[arg(short, long)]
         all: bool,
+    },
+
+    /// Manage releases (milestones)
+    #[command(subcommand)]
+    Release(ReleaseCommands),
+}
+
+#[derive(Subcommand)]
+pub enum ReleaseCommands {
+    /// Create a new release
+    New {
+        /// Semver version string (e.g., "1.0.0", "0.3.0-beta.1")
+        version: String,
+
+        /// Human-readable title (e.g., "Performance Release")
+        #[arg(short, long)]
+        title: Option<String>,
+
+        /// Read description from file (use - for stdin)
+        #[arg(short, long)]
+        body: Option<String>,
+
+        /// Target release date (YYYY-MM-DD)
+        #[arg(long)]
+        target_date: Option<String>,
+
+        /// Open editor immediately to write description
+        #[arg(long)]
+        edit: bool,
+    },
+
+    /// List releases
+    List {
+        /// Show all releases including released and cancelled
+        #[arg(short, long)]
+        all: bool,
+    },
+
+    /// Show release details and progress
+    Show {
+        /// Release version
+        version: String,
+    },
+
+    /// Edit release title and description
+    Edit {
+        /// Release version
+        version: String,
+    },
+
+    /// Activate a release (Planning -> Active)
+    Activate {
+        /// Release version
+        version: String,
+    },
+
+    /// Freeze a release (Active -> Frozen)
+    Freeze {
+        /// Release version
+        version: String,
+    },
+
+    /// Ship a release (Active/Frozen -> Released)
+    Ship {
+        /// Release version
+        version: String,
+    },
+
+    /// Cancel a release
+    Cancel {
+        /// Release version
+        version: String,
+    },
+
+    /// Schedule a change for a release
+    Schedule {
+        /// Change ID (prefix match supported)
+        #[arg(add = ArgValueCompleter::new(complete_change_id))]
+        change_id: String,
+
+        /// Target release version
+        version: String,
     },
 }
