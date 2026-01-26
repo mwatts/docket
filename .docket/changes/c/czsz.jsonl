@@ -8,3 +8,4 @@
 {"version":1,"id":"d6e0ee0a-7911-474f-8c68-a72d4167a020","change_id":"czsz","timestamp":"2026-01-25T23:40:10.756639Z","type":"release_set","data":{"release":"0.4.0"},"actor":"Steves-MacBook-Pro.local"}
 {"version":1,"id":"92d38f5d-4baf-4fe8-a3b4-731e81c864fb","change_id":"czsz","timestamp":"2026-01-25T23:40:23.955927Z","type":"tag_removed","data":{"tag":"0.3.0"},"actor":"Steves-MacBook-Pro.local"}
 {"version":1,"id":"4251b436-20f2-4b92-8837-fd0771be9427","change_id":"czsz","timestamp":"2026-01-25T23:40:24.331915Z","type":"tag_removed","data":{"tag":"state-management"},"actor":"Steves-MacBook-Pro.local"}
+{"version":1,"id":"eb7b3feb-e570-4d02-a74c-e4e8be9a56fa","change_id":"czsz","timestamp":"2026-01-26T02:38:00.875135Z","type":"status_changed","data":{"from":"draft","to":"approved"},"actor":"Steves-MacBook-Pro.local"}
