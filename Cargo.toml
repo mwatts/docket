@@ -1,6 +1,6 @@
 [package]
 name = "docket"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Task tracking for AI-assisted development"
 license = "MIT"

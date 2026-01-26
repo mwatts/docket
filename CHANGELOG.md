@@ -2,6 +2,25 @@
 
 All notable changes to docket will be documented in this file.
 
+## [0.3.0] - 2026-01-25
+
+### Added
+
+- Add `docket tree` command for dependency visualization
+- Add `docket tags` command to list all tags in use
+- Add `docket record` command for capturing already-completed work
+- Add release management (`docket release` commands)
+- Add `--edit` flag to `docket new` for opening editor immediately
+- Add unified Change model with DAG support
+
+### Changed
+
+- Make `--describe` the default behavior for `docket done` in workspaces
+
+### Fixed
+
+- Fix `docket done` to properly use workspace when available
+
 ## [0.2.0] - 2026-01-16
 
 ### Added
