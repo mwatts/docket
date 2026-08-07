@@ -2,6 +2,22 @@
 
 This document provides context for working on the docket codebase.
 
+## Language: Standard Technical English
+
+**REQUIRED.** Use standard technical English for all documentation, code comments,
+commit messages, issue text, and every response to the user.
+
+- Write plain, precise, declarative sentences. Prefer active voice and present tense.
+- Use one term per concept, consistently. Do not introduce synonyms for the same thing.
+- Expand every acronym on first use.
+- No idioms, slang, metaphors, humor, marketing language, hype, or emoji.
+- No filler and no praise ("great question", "you're absolutely right"). State the fact.
+- Use US spelling and standard punctuation. Avoid contractions in reference documentation.
+- Quantify claims. Replace "much faster" with a measured number, or drop the claim.
+- Write identifiers, paths, commands, and API names in backticks, spelled exactly as they
+  appear in the code.
+- State uncertainty explicitly. Do not present an assumption as a verified fact.
+
 ## Terminology
 
 Docket tracks **changes** - units of work in a DAG (Directed Acyclic Graph). A "change" can be anything from a small bug fix to a large initiative. Changes can have children (sub-changes) and dependencies (blocked by other changes).
